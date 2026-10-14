@@ -1,0 +1,6 @@
+output/
+_site/
+blank_a4_3pages.pdf
+node_modules/
+.DS_Store
+Thumbs.db

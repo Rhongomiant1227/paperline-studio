@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f3ef">
+  <meta name="description" content="Paperline 是一个免费、离线优先的空白纸与网格 PDF 生成器。自定义纸张、线条、表格和页数，直接导出打印。">
+  <title>Paperline — 纸张生成器</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='3' y='3' width='34' height='34' rx='11' fill='%235a6b57'/%3E%3Cpath d='M12 14h16M12 20h16M12 26h16' stroke='white' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">跳到画布</a>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="Paperline 首页">
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span class="brand-name">paperline<span class="brand-dot">.</span></span>
+      <span class="brand-divider"></span>
+      <span class="brand-caption">纸张工作室</span>
+    </a>
+    <div class="document-title">
+      <input id="docName" type="text" aria-label="文档名称" value="未命名纸张" maxlength="64">
+      <span class="save-state" id="saveState"><span class="save-dot"></span>已自动保存</span>
+    </div>
+    <div class="top-actions">
+      <button class="button button-quiet" id="projectMenuBtn" type="button" title="打开或保存项目">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h6l2 2h8v9H4zM4 7.5v-2h6l2 2"/></svg><span>项目</span>
+      </button>
+      <button class="button button-export" id="exportPdfBtn" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v4h14v-4"/></svg><span>导出 PDF</span>
+      </button>
+      <button class="icon-button mobile-settings" id="mobileSettingsBtn" type="button" aria-label="纸张设置">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10m-7 6h4"/><circle cx="8" cy="6" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="12" cy="18" r="1.5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="app-shell" id="workspace">
+    <aside class="settings-panel" id="settingsPanel" aria-label="纸张设置">
+      <div class="panel-scroll">
+        <section class="setting-section paper-section">
+          <div class="section-heading"><span class="section-index">01</span><h1>纸张</h1><span class="section-note">PAGE</span></div>
+          <label class="field-label" for="preset">尺寸预设</label>
+          <div class="select-wrap"><select id="preset">
+            <option value="a4">A4 · 210 × 297 mm</option><option value="a5">A5 · 148 × 210 mm</option>
+            <option value="a3">A3 · 297 × 420 mm</option><option value="letter">US Letter · 8.5 × 11 in</option>
+            <option value="legal">US Legal · 8.5 × 14 in</option><option value="custom">自定义尺寸</option>
+          </select><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg></div>
+          <div class="orientation-row" role="group" aria-label="纸张方向">
+            <button class="orientation-button active" id="portraitBtn" type="button" aria-pressed="true"><span class="orientation-icon portrait-icon"></span>纵向</button>
+            <button class="orientation-button" id="landscapeBtn" type="button" aria-pressed="false"><span class="orientation-icon landscape-icon"></span>横向</button>
+          </div>
+          <div class="dimensions-row">
+            <label><span>宽</span><input id="pageWidth" type="number" min="25" max="1600" step="1" value="210" inputmode="decimal"></label>
+            <span class="dimension-times">×</span>
+            <label><span>高</span><input id="pageHeight" type="number" min="25" max="1600" step="1" value="297" inputmode="decimal"></label>
+            <label class="unit-select"><span class="visually-hidden">单位</span><select id="unit"><option value="mm">mm</option><option value="cm">cm</option><option value="in">in</option><option value="pt">pt</option></select></label>
+          </div>
+          <div class="page-count-row"><label class="field-label" for="pageCount">总页数</label><div class="stepper"><button type="button" id="pageCountMinus" aria-label="减少页数">−</button><input id="pageCount" type="number" min="1" max="100" value="3" inputmode="numeric"><button type="button" id="pageCountPlus" aria-label="增加页数">+</button></div></div>
+          <p class="helper-text">最多 100 页；每页可单独添加线条和表格。</p>
+        </section>
+
+        <section class="setting-section">
+          <div class="section-heading"><span class="section-index">02</span><h2>纸面样式</h2><span class="section-note">PATTERN</span></div>
+          <div class="pattern-grid" id="patternGrid" role="group" aria-label="纸面样式">
+            <button class="pattern-card" data-pattern="blank" type="button" aria-pressed="true"><span class="pattern-swatch swatch-blank"></span><span>空白</span></button>
+            <button class="pattern-card" data-pattern="ruled" type="button" aria-pressed="false"><span class="pattern-swatch swatch-ruled"></span><span>横线</span></button>
+            <button class="pattern-card" data-pattern="graph" type="button" aria-pressed="false"><span class="pattern-swatch swatch-graph"></span><span>方格</span></button>
+            <button class="pattern-card" data-pattern="dots" type="button" aria-pressed="false"><span class="pattern-swatch swatch-dots"></span><span>点阵</span></button>
+            <button class="pattern-card" data-pattern="iso" type="button" aria-pressed="false"><span class="pattern-swatch swatch-iso"></span><span>等距</span></button>
+            <button class="pattern-card" data-pattern="hex" type="button" aria-pressed="false"><span class="pattern-swatch swatch-hex"></span><span>六边形</span></button>
+            <button class="pattern-card" data-pattern="isodots" type="button" aria-pressed="false"><span class="pattern-swatch swatch-isodots"></span><span>等距点阵</span></button>
+            <button class="pattern-card" data-pattern="cornell" type="button" aria-pressed="false"><span class="pattern-swatch swatch-cornell"></span><span>康奈尔</span></button>
+            <button class="pattern-card" data-pattern="music" type="button" aria-pressed="false"><span class="pattern-swatch swatch-music"></span><span>五线谱</span></button>
+          </div>
+          <p class="helper-text pattern-description" id="patternDescription"></p>
+          <div class="field-row field-row-spaced" id="spacingRow"><label class="field-label" for="spacing" id="spacingLabel">网格间距</label><div class="inline-input"><input id="spacing" type="number" min="1" max="100" step="0.5" value="8" inputmode="decimal"><span id="spacingUnit">mm</span></div></div>
+          <div class="field-row" id="majorRow"><label class="field-label" for="majorEvery">强调线</label><div class="inline-input inline-select"><span>每</span><select id="majorEvery"><option value="0">关闭</option><option value="4">4 格</option><option value="5" selected>5 格</option><option value="10">10 格</option></select></div></div>
+          <div class="field-row slider-row"><label class="field-label" for="margin">打印留白 <output id="marginValue">0 mm</output></label><input class="range-input" id="margin" type="range" min="0" max="40" step="1" value="0" aria-label="打印留白"><p class="helper-text">只为纸面底纹留白，手绘元素仍可放在整页。</p></div>
+          <div id="cornellSettings" hidden>
+            <div class="field-row slider-row"><label class="field-label" for="cueWidth">提示栏宽度 <output id="cueWidthValue">25%</output></label><input class="range-input" id="cueWidth" type="range" min="15" max="40" step="1" value="25"></div>
+            <div class="field-row slider-row"><label class="field-label" for="summaryHeight">总结区高度 <output id="summaryHeightValue">20%</output></label><input class="range-input" id="summaryHeight" type="range" min="10" max="35" step="1" value="20"></div>
+          </div>
+          <details class="quick-recipes"><summary>一键纸张配方 <span>QUICK PICKS</span></summary><div class="recipe-grid"><button type="button" data-recipe="journal">轻点手帐</button><button type="button" data-recipe="draft">方格草稿</button><button type="button" data-recipe="study">学习笔记</button><button type="button" data-recipe="score">作曲草稿</button></div><p class="helper-text">配方调整纸面参数，保留页数与手绘元素。</p></details>
+        </section>
+
+        <section class="setting-section">
+          <div class="section-heading"><span class="section-index">03</span><h2>线条</h2><span class="section-note">STROKE</span></div>
+          <div class="color-row"><label class="field-label" for="lineColor">颜色</label><label class="color-control"><input id="lineColor" type="color" value="#71846d" aria-label="线条颜色"><span id="lineColorValue">#71846D</span></label></div>
+          <div class="field-row slider-row"><label class="field-label" for="lineWidth">粗细 <output id="lineWidthValue">0.25 mm</output></label><input class="range-input" id="lineWidth" type="range" min="0.1" max="2" step="0.05" value="0.25"></div>
+          <div class="field-row slider-row"><label class="field-label" for="opacity">透明度 <output id="opacityValue">34%</output></label><input class="range-input" id="opacity" type="range" min="5" max="100" step="1" value="34"></div>
+          <div class="field-row field-row-spaced"><label class="field-label" for="dashStyle">线型</label><div class="select-wrap compact-select"><select id="dashStyle"><option value="solid">实线</option><option value="dash">短虚线</option><option value="longdash">长虚线</option><option value="dot">点线</option><option value="dashdot">点划线</option></select><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg></div></div>
+          <div class="field-row slider-row dash-slider-row"><label class="field-label" for="dashLength">虚线长度 <output id="dashLengthValue">3 mm</output></label><input class="range-input" id="dashLength" type="range" min="0.2" max="50" step="0.2" value="3" aria-label="虚线长度"></div>
+          <div class="field-row slider-row dash-slider-row"><label class="field-label" for="dashGap">虚线间距 <output id="dashGapValue">2 mm</output></label><input class="range-input" id="dashGap" type="range" min="0.2" max="50" step="0.2" value="2" aria-label="虚线间距"></div>
+          <div class="field-row paper-color-row"><label class="field-label" for="paperColor">纸张底色</label><label class="color-control"><input id="paperColor" type="color" value="#ffffff" aria-label="纸张底色"><span id="paperColorValue">#FFFFFF</span></label></div>
+        </section>
+
+        <section class="setting-section tools-section">
+          <div class="section-heading"><span class="section-index">04</span><h2>画布元素</h2><span class="section-note">TOOLS</span></div>
+          <div class="tool-switch" role="group" aria-label="画布工具">
+            <button class="tool-button active" data-tool="select" type="button" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 3 12 10-6 1-3 6z"/></svg>选择</button>
+            <button class="tool-button" data-tool="line" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 19 14-14"/><circle cx="5" cy="19" r="1.4"/><circle cx="19" cy="5" r="1.4"/></svg>画线</button>
+            <button class="tool-button" data-tool="table" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M4 14.5h16M10 5v14M15 5v14"/></svg>表格</button>
+          </div>
+          <div class="table-settings" id="tableSettings" hidden>
+            <div class="table-dimensions"><label><span>列</span><input id="tableCols" type="number" min="1" max="20" value="4"></label><label><span>行</span><input id="tableRows" type="number" min="1" max="40" value="5"></label><label><span>宽 mm</span><input id="tableWidth" type="number" min="10" max="500" value="120"></label></div>
+            <p class="helper-text">点画布放置表格，拖动可调整位置。</p>
+            <button class="button button-secondary button-full" id="insertTableBtn" type="button">点击画布放置表格</button>
+          </div>
+          <div class="element-actions"><button class="text-button" id="undoBtn" type="button" disabled><kbd>⌘ Z</kbd> 撤销</button><button class="text-button" id="redoBtn" type="button" disabled><kbd>⇧ ⌘ Z</kbd> 重做</button><button class="text-button danger-text" id="deleteBtn" type="button" disabled><kbd>⌫</kbd> 删除选中</button></div>
+        </section>
+      </div>
+      <footer class="panel-footer"><span class="privacy-mark"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.6c0 4-2.5 6.8-6 7.9-3.5-1.1-6-3.9-6-7.9V5z"/><path d="m7.5 9.8 1.7 1.7 3.5-3.7"/></svg>文件仅在你的设备处理</span><span>无需注册 · 免费使用</span></footer>
+    </aside>
+
+    <section class="canvas-area" aria-label="纸张预览">
+      <div class="canvas-toolbar">
+        <div class="canvas-context"><span class="context-kicker">LIVE PREVIEW</span><span class="context-divider"></span><span id="pageSizeLabel">A4 · 210 × 297 mm</span></div>
+        <div class="canvas-actions">
+          <button class="icon-button" id="zoomOutBtn" type="button" aria-label="缩小" title="缩小"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4 4m-11.5-8.7h5.6"/></svg></button>
+          <button class="zoom-label" id="zoomFitBtn" type="button" title="适合画布">适合</button>
+          <button class="icon-button" id="zoomInBtn" type="button" aria-label="放大" title="放大"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4 4m-7.5-10.5v5.5m-2.8-2.8h5.6"/></svg></button>
+          <span class="toolbar-divider"></span>
+          <button class="icon-button" id="undoTopBtn" type="button" aria-label="撤销" title="撤销 (Ctrl/⌘ Z)" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8 5 12l4 4M5.5 12H14a5 5 0 0 1 0 10" transform="translate(0 -4)"/></svg></button>
+        </div>
+      </div>
+      <div class="stage" id="stage" tabindex="0" aria-label="文档画布。可使用工具绘制线条或放置表格。">
+        <div class="stage-hint" id="stageHint" hidden><span class="hint-key">ESC</span><span id="stageHintText">点击画布放置表格</span><button id="cancelToolBtn" type="button" aria-label="取消当前工具">×</button></div>
+        <div class="page-wrap" id="pageWrap"><svg id="paperSvg" role="img" aria-label="纸张预览"></svg></div>
+      </div>
+      <div class="pagebar">
+        <div class="pagebar-label"><span>页面</span><span class="page-counter" id="pageCounter">01 <i>/</i> 03</span></div>
+        <div class="page-thumbnails" id="pageThumbnails" aria-label="页面列表"></div>
+        <div class="pagebar-actions"><button class="icon-button pagebar-icon" id="duplicatePageBtn" type="button" aria-label="复制当前页" title="复制当前页"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="12" rx="2"/><path d="M15 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h2"/></svg></button><button class="icon-button pagebar-icon" id="addPageBtn" type="button" aria-label="添加页面" title="添加页面"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></div>
+      </div>
+      <div class="canvas-footnote"><span><kbd>拖动</kbd> 画线 <span class="footnote-dot">·</span> <kbd>点击</kbd> 放置表格 <span class="footnote-dot">·</span> <kbd>Delete</kbd> 删除元素</span><span class="vector-badge"><i></i>矢量清晰输出</span></div>
+    </section>
+  </main>
+
+  <input id="projectFileInput" type="file" accept="application/json,.json" hidden>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <dialog class="project-dialog" id="projectDialog" aria-labelledby="projectDialogTitle">
+    <div class="dialog-top"><div><span class="dialog-eyebrow">PROJECT FILE</span><h2 id="projectDialogTitle">项目文件</h2></div><button class="icon-button dialog-close" id="closeProjectDialog" type="button" aria-label="关闭">×</button></div>
+    <p>导出项目 JSON 可备份所有页面和设置，之后可重新打开继续编辑。</p>
+    <div class="dialog-actions"><button class="button button-secondary" id="openProjectBtn" type="button">打开项目</button><button class="button button-export" id="saveProjectBtn" type="button">保存项目 JSON</button></div>
+    <div class="dialog-local"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5 16 5v4.6c0 4-2.5 6.8-6 7.9-3.5-1.1-6-3.9-6-7.9V5z"/><path d="m7.5 9.8 1.7 1.7 3.5-3.7"/></svg>当前内容也会自动保存在此浏览器。</div>
+  </dialog>
+  <script src="app.js" defer></script>
+</body>
+</html>
