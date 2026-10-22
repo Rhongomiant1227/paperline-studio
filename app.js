@@ -170,7 +170,8 @@
         const reach = w * Math.abs(nx) + h * Math.abs(ny);
         const count = Math.ceil(reach / (step * Math.sqrt(3) / 2));
         for (let i = -count; i <= count && lines.length < 4200; i++) {
-          const clipped = clipInfiniteLine(nx * i * step * Math.sqrt(3) / 2, 0, dx, dy, w, h);
+          const offset = i * step * Math.sqrt(3) / 2;
+          const clipped = clipInfiniteLine(nx * offset, ny * offset, dx, dy, w, h);
           if (clipped) addLine(...clipped, isMajor(Math.abs(i)));
         }
       }
