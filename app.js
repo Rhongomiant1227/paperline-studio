@@ -42,7 +42,15 @@
     s.settings.dash = DASH_MAP[s.settings.dash] ? s.settings.dash : 'solid';
     s.settings.color = /^#[0-9a-f]{6}$/i.test(s.settings.color) ? s.settings.color : '#71846D';
     s.settings.paper = /^#[0-9a-f]{6}$/i.test(s.settings.paper) ? s.settings.paper : '#FFFFFF';
-    s.settings.opacity = clamp(Number(s.settings.opacity) || 34, 5, 100);
+    const spacingPt = Number(s.settings.spacingPt), widthPt = Number(s.settings.widthPt);
+    const dashLengthPt = Number(s.settings.dashLengthPt), dashGapPt = Number(s.settings.dashGapPt);
+    const majorEvery = Number(s.settings.majorEvery), opacity = Number(s.settings.opacity);
+    s.settings.spacingPt = clamp(Number.isFinite(spacingPt) ? spacingPt : d.spacingPt, UNIT_TO_PT.mm, 100 * UNIT_TO_PT.mm);
+    s.settings.widthPt = clamp(Number.isFinite(widthPt) ? widthPt : d.widthPt, 0.1 * UNIT_TO_PT.mm, 2 * UNIT_TO_PT.mm);
+    s.settings.dashLengthPt = clamp(Number.isFinite(dashLengthPt) ? dashLengthPt : d.dashLengthPt, 0.2 * UNIT_TO_PT.mm, 50 * UNIT_TO_PT.mm);
+    s.settings.dashGapPt = clamp(Number.isFinite(dashGapPt) ? dashGapPt : d.dashGapPt, 0.2 * UNIT_TO_PT.mm, 50 * UNIT_TO_PT.mm);
+    s.settings.majorEvery = [0, 4, 5, 10].includes(majorEvery) ? majorEvery : d.majorEvery;
+    s.settings.opacity = clamp(Number.isFinite(opacity) ? opacity : d.opacity, 5, 100);
     s.settings.marginPt = clamp(Number(s.settings.marginPt) || 0, 0, 40 * UNIT_TO_PT.mm);
     s.settings.cueWidth = clamp(Number(s.settings.cueWidth) || 25, 15, 40);
     s.settings.summaryHeight = clamp(Number(s.settings.summaryHeight) || 20, 10, 35);
@@ -312,7 +320,11 @@
     $('unit').value = u;
     if (preserveDimension !== 'pageWidth') $('pageWidth').value = fmt(state.widthPt / factor, u === 'pt' ? 0 : 1);
     if (preserveDimension !== 'pageHeight') $('pageHeight').value = fmt(state.heightPt / factor, u === 'pt' ? 0 : 1);
-    $('spacing').value = fmt(state.settings.spacingPt / factor, 1);
+    const spacingInput = $('spacing'), spacingUnitFactor = UNIT_TO_PT.mm / factor;
+    spacingInput.min = fmt(spacingUnitFactor, 4);
+    spacingInput.max = fmt(100 * spacingUnitFactor, 4);
+    spacingInput.step = fmt(0.5 * spacingUnitFactor, 4);
+    if (preserveDimension !== 'spacing') spacingInput.value = fmt(state.settings.spacingPt / factor, 1);
     $('spacingUnit').textContent = u;
     $('lineWidth').value = fmt(state.settings.widthPt / UNIT_TO_PT.mm, 2);
     $('lineWidthValue').textContent = `${fmt(state.settings.widthPt / UNIT_TO_PT.mm, 2)} mm`;
@@ -368,6 +380,7 @@
   function updateToolUI() {
     document.querySelectorAll('.tool-button').forEach(b => { const active = b.dataset.tool === tool; b.classList.toggle('active', active); b.setAttribute('aria-pressed', String(active)); });
     $('tableSettings').hidden = tool !== 'table';
+    svg.classList.toggle('canvas-interactive', tool !== 'select');
     const needsHint = tool === 'line' || tool === 'table';
     $('stageHint').hidden = !needsHint;
     $('stageHintText').textContent = tool === 'line' ? '按住并拖动绘制线条' : '点击画布放置表格';
@@ -375,7 +388,14 @@
     updateUndoButtons();
   }
 
-  function setTool(next) { tool = next; updateToolUI(); }
+  function setTool(next) {
+    tool = next;
+    if (innerWidth <= 760) {
+      $('settingsPanel').classList.remove('open');
+      $('mobileSettingsBtn').setAttribute('aria-expanded', 'false');
+    }
+    updateToolUI();
+  }
   function fitUnitsToInputs() {
     $('pageWidth').value = fmt(pointsToUnit(state.widthPt), 1);
     $('pageHeight').value = fmt(pointsToUnit(state.heightPt), 1);
@@ -449,7 +469,9 @@
       if (objNode) return;
       const cols = clamp(Math.round(Number($('tableCols').value) || 1), 1, 20);
       const rows = clamp(Math.round(Number($('tableRows').value) || 1), 1, 40);
-      const width = (Number($('tableWidth').value) || 120) * UNIT_TO_PT.mm;
+      const widthMm = clamp(Number($('tableWidth').value) || 120, 40, 180);
+      $('tableWidth').value = widthMm;
+      const width = widthMm * UNIT_TO_PT.mm;
       const rowHeight = 12 * UNIT_TO_PT.mm;
       const w = Math.min(width, state.widthPt - 4), h = Math.min(rows * rowHeight, state.heightPt - 4);
       const x = clamp(point.x - w / 2, 2, Math.max(2, state.widthPt - w - 2));
@@ -493,7 +515,7 @@
   function finishPointer(event) {
     if (!pointerAction || pointerAction.pointerId !== event.pointerId) return;
     const action = pointerAction; pointerAction = null;
-    if (action.type === 'line') {
+    if (action.type === 'line' && event.type !== 'pointercancel') {
       const end = svgPoint(event);
       if (Math.hypot(end.x - action.start.x, end.y - action.start.y) >= 2) {
         pushHistory(); activePage().elements.push({ id: id(), type: 'line', x1: action.start.x, y1: action.start.y, x2: end.x, y2: end.y });
@@ -506,21 +528,25 @@
   svg.addEventListener('pointerup', finishPointer);
   svg.addEventListener('pointercancel', finishPointer);
 
-  function updateSettingsFromControls() {
-    const s = state.settings, f = currentUnitFactor();
-    s.spacingPt = clamp(Number($('spacing').value) || 8, 0.5, 1000) * f;
-    s.majorEvery = Number($('majorEvery').value);
-    s.color = $('lineColor').value.toUpperCase();
-    s.widthPt = clamp(Number($('lineWidth').value) || 0.25, 0.05, 2) * UNIT_TO_PT.mm;
-    s.opacity = Number($('opacity').value);
-    s.dash = $('dashStyle').value;
-    s.dashLengthPt = clamp(Number($('dashLength').value) || 3, 0.2, 50) * UNIT_TO_PT.mm;
-    s.dashGapPt = clamp(Number($('dashGap').value) || 2, 0.2, 50) * UNIT_TO_PT.mm;
-    s.paper = $('paperColor').value.toUpperCase();
-    s.marginPt = clamp(Number($('margin').value) || 0, 0, 40) * UNIT_TO_PT.mm;
-    s.cueWidth = clamp(Number($('cueWidth').value) || 25, 15, 40);
-    s.summaryHeight = clamp(Number($('summaryHeight').value) || 20, 10, 35);
-    updateLabels(); renderPageSvg(svg, activePage()); renderThumbnails(); updateFit(); persist();
+  function updateSettingsFromControls(event) {
+    const s = state.settings, f = currentUnitFactor(), settingId = event?.target?.id;
+    if (settingId === 'spacing') {
+      const inputValue = Number($('spacing').value);
+      s.spacingPt = clamp(Number.isFinite(inputValue) ? inputValue * f : 8 * UNIT_TO_PT.mm, UNIT_TO_PT.mm, 100 * UNIT_TO_PT.mm);
+    }
+    else if (settingId === 'majorEvery') s.majorEvery = Number($('majorEvery').value);
+    else if (settingId === 'lineColor') s.color = $('lineColor').value.toUpperCase();
+    else if (settingId === 'lineWidth') s.widthPt = clamp(Number($('lineWidth').value) || 0.25, 0.1, 2) * UNIT_TO_PT.mm;
+    else if (settingId === 'opacity') s.opacity = Number($('opacity').value);
+    else if (settingId === 'dashStyle') s.dash = $('dashStyle').value;
+    else if (settingId === 'dashLength') s.dashLengthPt = clamp(Number($('dashLength').value) || 3, 0.2, 50) * UNIT_TO_PT.mm;
+    else if (settingId === 'dashGap') s.dashGapPt = clamp(Number($('dashGap').value) || 2, 0.2, 50) * UNIT_TO_PT.mm;
+    else if (settingId === 'paperColor') s.paper = $('paperColor').value.toUpperCase();
+    else if (settingId === 'margin') s.marginPt = clamp(Number($('margin').value) || 0, 0, 40) * UNIT_TO_PT.mm;
+    else if (settingId === 'cueWidth') s.cueWidth = clamp(Number($('cueWidth').value) || 25, 15, 40);
+    else if (settingId === 'summaryHeight') s.summaryHeight = clamp(Number($('summaryHeight').value) || 20, 10, 35);
+    updateLabels(settingId === 'spacing' && event.type === 'input' ? 'spacing' : null);
+    renderPageSvg(svg, activePage()); renderThumbnails(); updateFit(); persist();
   }
 
   function applyRecipe(recipe) {
@@ -553,7 +579,9 @@
     return `${pdfNum(x + r)} ${pdfNum(cy)} m ${pdfNum(x + r)} ${pdfNum(cy + k)} ${pdfNum(x + k)} ${pdfNum(cy + r)} ${pdfNum(x)} ${pdfNum(cy + r)} c ${pdfNum(x - k)} ${pdfNum(cy + r)} ${pdfNum(x - r)} ${pdfNum(cy + k)} ${pdfNum(x - r)} ${pdfNum(cy)} c ${pdfNum(x - r)} ${pdfNum(cy - k)} ${pdfNum(x - k)} ${pdfNum(cy - r)} ${pdfNum(x)} ${pdfNum(cy - r)} c ${pdfNum(x + k)} ${pdfNum(cy - r)} ${pdfNum(x + r)} ${pdfNum(cy - k)} ${pdfNum(x + r)} ${pdfNum(cy)} c f\n`;
   }
   function pdfPageContent(page, w, h, gsName) {
-    const s = state.settings, inset = clamp(s.marginPt || 0, 0, Math.max(0, Math.min(w, h) / 2 - 1)), innerW = Math.max(1, w - inset * 2), innerH = Math.max(1, h - inset * 2), { lines, dots } = getPatternPrimitives(innerW, innerH, s), out = ['q', `0 0 ${pdfNum(w)} ${pdfNum(h)} re W n`, pdfFillColor(s.paper), `0 0 ${pdfNum(w)} ${pdfNum(h)} re f`, pdfStrokeColor(s.color), `${gsName ? `/${gsName} gs` : ''}`, '1 J 1 j'];
+    const s = state.settings, lineCap = s.dash === 'dot' ? 1 : 0;
+    const inset = clamp(s.marginPt || 0, 0, Math.max(0, Math.min(w, h) / 2 - 1)), innerW = Math.max(1, w - inset * 2), innerH = Math.max(1, h - inset * 2), { lines, dots } = getPatternPrimitives(innerW, innerH, s);
+    const out = ['q', `0 0 ${pdfNum(w)} ${pdfNum(h)} re W n`, pdfFillColor(s.paper), `0 0 ${pdfNum(w)} ${pdfNum(h)} re f`, pdfStrokeColor(s.color), `${gsName ? `/${gsName} gs` : ''}`, `${lineCap} J 1 j`];
     const dash = s.dash === 'solid' ? [] : s.dash === 'dot' ? [Math.max(0.45, s.widthPt * .65), s.dashGapPt] : s.dash === 'longdash' ? [s.dashLengthPt * 2.4, s.dashGapPt] : s.dash === 'dashdot' ? [s.dashLengthPt * 1.8, s.dashGapPt, Math.max(0.45, s.widthPt * .65), s.dashGapPt] : [s.dashLengthPt, s.dashGapPt];
     for (const l of lines) out.push(pdfLine(l.x1 + inset, l.y1 + inset, l.x2 + inset, l.y2 + inset, h, s.widthPt * (l.major ? 1.75 : 1), dash));
     if (dots.length) { out.push(pdfFillColor(s.color)); for (const d of dots) out.push(pdfCircle(d.x + inset, d.y + inset, d.major ? Math.max(1, s.widthPt * 2) : Math.max(.65, s.widthPt * 1.1), h)); }
@@ -657,14 +685,18 @@
   $('openProjectBtn').addEventListener('click', () => { $('projectDialog').close(); $('projectFileInput').click(); });
   $('projectFileInput').addEventListener('change', e => openProjectFile(e.target.files[0]));
   $('docName').addEventListener('input', e => { state.name = e.target.value.slice(0, 64); persist(); });
-  $('mobileSettingsBtn').addEventListener('click', () => $('settingsPanel').classList.toggle('open'));
+  $('mobileSettingsBtn').addEventListener('click', () => {
+    const isOpen = $('settingsPanel').classList.toggle('open');
+    $('mobileSettingsBtn').setAttribute('aria-expanded', String(isOpen));
+  });
 
   document.addEventListener('keydown', e => {
     const tag = e.target?.tagName;
     const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(tag) || e.target?.isContentEditable;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
-    if (!typing && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSelected(); }
+    const canvasShortcutsAllowed = !typing && !document.querySelector('dialog[open]');
+    if (canvasShortcutsAllowed && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if (canvasShortcutsAllowed && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+    if (canvasShortcutsAllowed && (e.key === 'Delete' || e.key === 'Backspace')) { e.preventDefault(); deleteSelected(); }
     if (e.key === 'Escape' && tool !== 'select') { pointerAction = null; setTool('select'); renderPageSvg(svg, activePage()); }
   });
   window.addEventListener('resize', updateFit);
